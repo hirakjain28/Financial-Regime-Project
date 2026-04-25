@@ -1,10 +1,11 @@
-import warnings
-warnings.filterwarnings("ignore")
+import joblib
+import os
 
-from statsmodels.tsa.arima.model import ARIMA
+BASE_DIR = os.path.dirname(__file__)
+model_path = os.path.join(BASE_DIR, "arima_model.pkl")
 
-def arima_forecast(series):
-    model = ARIMA(series, order=(1,1,1))
-    fitted = model.fit()
-    forecast = fitted.forecast(steps=1)
-    return forecast.iloc[0]
+model = joblib.load(model_path)
+
+def arima_forecast(df):
+    forecast = model.forecast(steps=1)
+    return float(forecast.iloc[0])
