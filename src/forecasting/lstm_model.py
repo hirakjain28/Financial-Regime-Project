@@ -1,28 +1,38 @@
+import numpy as np
 import os
 import joblib
+
 from tensorflow.keras.models import load_model
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(__file__)
 
-model_path = os.path.join(BASE_DIR, "lstm_model.h5")
-scaler_path = os.path.join(BASE_DIR, "scaler.save")
+model = load_model(
+    os.path.join(BASE_DIR,"lstm_return.h5"),
+    compile=False
+)
 
-model = load_model(model_path, compile=False)
-scaler = joblib.load(scaler_path)
+scaler = joblib.load(
+    os.path.join(BASE_DIR,"return_scaler.save")
+)
 
-def lstm_forecast(series):
+def lstm_forecast(data):
 
-    data = series.values.reshape(-1, 1)
-    data_scaled = scaler.transform(data)
+    prices = data["Close"].values.reshape(-1,1)
 
-    window = 20
+    returns = np.diff(prices, axis=0) / prices[:-1]
 
-    if len(data_scaled) < window:
-        return series.iloc[-1]
+    last_seq = returns[-20:]
 
-    last_window = data_scaled[-window:]
-    last_window = last_window.reshape(1, window, 1)
+    scaled = scaler.transform(last_seq)
 
-    pred = model.predict(last_window, verbose=0)
+    X = scaled.reshape(1,20,1)
 
-    return scaler.inverse_transform(pred)[0][0]
+    pred_scaled = model.predict(X, verbose=0)
+
+    pred_return = scaler.inverse_transform(pred_scaled)[0][0]
+
+    current_price = prices[-1][0]
+    pred_return = np.clip(pred_return, -0.05, 0.05)
+    pred_price = current_price * (1 + pred_return)
+
+    return pred_price
